@@ -12,7 +12,8 @@
 // and the defaults below on a cold device with no backend at all.
 
 // Apps Script /exec URL. Empty = artifact/offline mode (defaults only).
-export const SCRIPT_URL = "";
+export const SCRIPT_URL =
+  "https://script.google.com/macros/s/AKfycbxazlKXiqY8CqmkcsCmXSYjsVaiSoREAsZZKYCG1DNb_gRO2PB1qbO29-dIX4LbvNp5hg/exec";
 
 // SHA-256 of the organiser passcode ("pw2026"). This gates the UI only —
 // the real check happens server-side in Code.gs. Anyone reading the
