@@ -7,11 +7,15 @@
  * 3. Run the `setup` function once (select it in the toolbar dropdown → Run).
  *    Grant the permissions it asks for. This creates and seeds all five tabs
  *    — you do NOT need to build the sheet by hand.
- * 4. Deploy → New deployment → type "Web app".
+ * 4. Project Settings (⚙) → Script Properties → Add:
+ *      Property: ORGANISER_CODE   Value: <your code>
+ *    Until this is set, the responses endpoint refuses everyone.
+ * 5. Deploy → New deployment → type "Web app".
  *      Execute as:      Me
  *      Who has access:  Anyone
- *    Copy the /exec URL into SCRIPT_URL in src/config.js.
- * 5. Set ORGANISER_CODE below to your own code, then re-deploy (see below).
+ *    Copy the /exec URL into SCRIPT_URL in src/config.js, and put the
+ *    SHA-256 of your code into ADMIN_HASH there:
+ *      echo -n "yourcode" | shasum -a 256
  *
  * ── THE RE-DEPLOY GOTCHA ─────────────────────────────────────────────────
  * Saving this file does NOT change what /exec serves. After ANY edit:
@@ -25,9 +29,18 @@
  *   POST (body = submission JSON)  → { ok: true }
  */
 
-// The organiser code. Checked server-side, so this is a real gate — unlike
-// the client-side hash in the app bundle, which only stops casual clicking.
-const ORGANISER_CODE = "pw2026";
+// The organiser code lives in a script property, NOT in this file — so
+// re-pasting this file can't silently revert it, and the secret never
+// reaches the git repo.
+//
+// Set it once: Project Settings (⚙) → Script Properties → Add
+//   Property: ORGANISER_CODE     Value: <your code>
+//
+// Checked server-side, so this is a real gate — unlike the client-side
+// hash in the app bundle, which only decides whether the UI renders.
+function organiserCode_() {
+  return PropertiesService.getScriptProperties().getProperty("ORGANISER_CODE") || "";
+}
 
 // Seconds to cache the parsed config. Sheet edits appear after this expires.
 const CONFIG_CACHE_SECONDS = 30;
@@ -48,8 +61,10 @@ function doGet(e) {
   const mode = (e && e.parameter && e.parameter.mode) || "config";
 
   if (mode === "responses") {
+    const expected = organiserCode_();
     const supplied = (e.parameter.code || "").trim();
-    if (supplied !== ORGANISER_CODE) {
+    // An unset property must never mean "everyone is authorised".
+    if (!expected || supplied !== expected) {
       return json_({ error: "unauthorised" });
     }
     return json_(readResponses_());

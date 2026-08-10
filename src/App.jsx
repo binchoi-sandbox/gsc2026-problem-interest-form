@@ -401,8 +401,8 @@ export default function App() {
               className="rounded-lg px-4 py-3 text-sm font-medium"
               style={{ background: "#FBEDED", color: "#8C2F2F" }}
             >
-              Couldn't load responses. Check that the Apps Script is deployed and that
-              ORGANISER_CODE in Code.gs matches the code you just entered.
+              Couldn't load responses. Check that the Apps Script is deployed, and that
+              its ORGANISER_CODE script property matches the code you just entered.
             </div>
           )}
           {Array.isArray(adminData) && rows.length === 0 && (

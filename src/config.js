@@ -15,11 +15,13 @@
 export const SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbxazlKXiqY8CqmkcsCmXSYjsVaiSoREAsZZKYCG1DNb_gRO2PB1qbO29-dIX4LbvNp5hg/exec";
 
-// SHA-256 of the organiser passcode ("pw2026"). This gates the UI only —
-// the real check happens server-side in Code.gs. Anyone reading the
-// bundle can find this hash, which is why the endpoint has its own gate.
+// SHA-256 of the organiser passcode. This gates the UI only — the real
+// check happens server-side against the ORGANISER_CODE script property.
+// Anyone reading the bundle can find this hash, which is why the
+// endpoint has its own gate. Regenerate with:
+//   echo -n "yourcode" | shasum -a 256
 export const ADMIN_HASH =
-  "efa881e70b4af136dd8a6f82130b1cf4cad09fe95eca16cdbda350fe54a6699e";
+  "c7480de97a58bf51cbf62351279040ed50e636891597950f68f9ee92280ebf0c";
 
 const CACHE_KEY = "gs-sg-form:config";
 const FETCH_TIMEOUT_MS = 4000;

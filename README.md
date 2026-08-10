@@ -20,13 +20,21 @@ function that creates and seeds every tab.
 2. **Extensions → Apps Script**, delete the placeholder, paste in
    `apps-script/Code.gs`, Save.
 3. Select `setup` in the function dropdown and **Run**. Grant permissions.
-4. **Deploy → New deployment → Web app**
+4. **Project Settings (⚙) → Script Properties → Add**
+   - Property: `ORGANISER_CODE`  Value: *your code*
+
+   The code lives here rather than in `Code.gs` so that re-pasting the file
+   can't silently revert it, and so the secret never reaches the git repo.
+   **Until this property is set, the responses endpoint refuses everyone.**
+5. **Deploy → New deployment → Web app**
    - Execute as: **Me**
    - Who has access: **Anyone**
-5. Copy the `/exec` URL into `SCRIPT_URL` in [`src/config.js`](src/config.js).
-6. Change `ORGANISER_CODE` in `Code.gs` from `pw2026` to your own, then
-   re-deploy (see the gotcha below). Update `ADMIN_HASH` in `src/config.js`
-   to match: `echo -n "yourcode" | shasum -a 256`
+6. Copy the `/exec` URL into `SCRIPT_URL` in [`src/config.js`](src/config.js),
+   and set `ADMIN_HASH` there to the SHA-256 of your code:
+   `echo -n "yourcode" | shasum -a 256`
+
+   Use `echo -n`. Plain `echo` appends a newline and hashes a different
+   string, so the organiser view will reject a code that looks correct.
 
 ### ⚠️ The re-deploy gotcha
 

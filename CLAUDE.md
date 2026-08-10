@@ -54,9 +54,14 @@ See [README.md](README.md) for the sheet schema and setup steps.
   safe; reusing a `StatementId` for a different statement silently merges two
   problems' data.
 - **Two gates, two purposes.** `ADMIN_HASH` in the bundle only decides whether
-  the organiser UI renders. `ORGANISER_CODE` in `Code.gs` is the real check —
-  the responses endpoint would otherwise be a public dump of names and personal
-  free text. Change both together.
+  the organiser UI renders. The `ORGANISER_CODE` **script property** is the real
+  check — the responses endpoint would otherwise be a public dump of names and
+  personal free text. Change both together, and hash with `echo -n` (a trailing
+  newline yields a hash that rejects the correct code).
+- **The organiser code is not in the repo.** It lives in the Apps Script
+  project's Script Properties, so `Code.gs` here is safe to re-paste and the
+  secret never lands in git. `organiserCode_()` returns `""` when unset, and an
+  unset code denies everyone rather than admitting everyone.
 - **Config cache is 30s** server-side (`CONFIG_CACHE_SECONDS`) plus whatever is
   in the browser's localStorage. A sheet edit isn't instant; `flushConfigCache()`
   in the Apps Script editor forces it.
