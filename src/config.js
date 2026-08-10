@@ -23,7 +23,9 @@ export const SCRIPT_URL =
 export const ADMIN_HASH =
   "c7480de97a58bf51cbf62351279040ed50e636891597950f68f9ee92280ebf0c";
 
-const CACHE_KEY = "gs-sg-form:config";
+// localStorage on *.github.io is shared across every repo on the account,
+// so this key needs to stay distinctive.
+const CACHE_KEY = "gsc2026-problem-interest-form:config";
 const FETCH_TIMEOUT_MS = 4000;
 
 // ─────────────────────────────────────────────────────────────
