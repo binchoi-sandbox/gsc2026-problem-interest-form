@@ -88,33 +88,46 @@ function doPost(e) {
     }
 
     const now = new Date();
+    const name = String(d.name).trim();
     const selections = Array.isArray(d.selections) ? d.selections : [];
 
-    sheet_(TAB.responses).appendRow([
-      now,
-      String(d.name).trim(),
-      JSON.stringify(selections),
-      d.skills || "",
-      d.otherProblems || "",
-      d.submittedAt || now.toISOString(),
-    ]);
+    appendByHeader_(sheet_(TAB.responses), {
+      Timestamp: now,
+      Name: name,
+      Selections: JSON.stringify(selections),
+      OtherCauses: d.otherCauses || "",
+      Skills: d.skills || "",
+      Networks: d.networks || "",
+      SubmittedAt: d.submittedAt || now.toISOString(),
+    });
 
     // Mirror into a flat, one-row-per-(person × statement) tab so the sheet
     // is directly pivotable. The JSON blob above stays the source of truth.
     const flat = sheet_(TAB.flat);
+    const modeLabels = readModes_().map(function (m) {
+      return m.label;
+    });
     selections.forEach(function (s) {
       const modes = Array.isArray(s.modes) ? s.modes : [];
-      flat.appendRow([
-        now,
-        String(d.name).trim(),
-        s.pillar || "",
-        s.id || "",
-        s.title || "",
-        modes.indexOf("Discuss") > -1 ? 1 : 0,
-        modes.indexOf("Research") > -1 ? 1 : 0,
-        modes.indexOf("Build") > -1 ? 1 : 0,
-        s.notes || "",
-      ]);
+      const row = {
+        Timestamp: now,
+        Name: name,
+        Pillar: s.pillar || "",
+        StatementId: s.id || "",
+        Statement: s.title || "",
+        // Plain-text mirror of the selections. Survives any mode rename,
+        // so the data is never lost even if the 1/0 columns below don't
+        // line up with the current mode labels.
+        Modes: modes.join(", "),
+        Notes: s.notes || "",
+      };
+      // One 1/0 column per configured mode, keyed by label. appendByHeader_
+      // drops keys with no matching header, so a renamed mode simply stops
+      // filling its old column instead of shifting every value after it.
+      modeLabels.forEach(function (label) {
+        row[label] = modes.indexOf(label) > -1 ? 1 : 0;
+      });
+      appendByHeader_(flat, row);
     });
 
     return json_({ ok: true });
@@ -139,8 +152,9 @@ function readResponses_() {
       return {
         name: String(r.Name),
         selections: safeParse_(r.Selections, []),
+        otherCauses: String(r.OtherCauses || ""),
         skills: String(r.Skills || ""),
-        otherProblems: String(r.OtherProblems || ""),
+        networks: String(r.Networks || ""),
         submittedAt: toIso_(r.SubmittedAt || r.Timestamp),
       };
     });
@@ -235,6 +249,28 @@ function sheet_(name) {
   return s;
 }
 
+/**
+ * Appends a row by matching object keys to the sheet's header text.
+ *
+ * Writes used to be positional while reads matched on header name, so
+ * inserting or reordering a column silently sent data to the wrong place.
+ * Both directions now agree on the header row as the single source of truth:
+ * reorder columns freely, and an unrecognised key is dropped rather than
+ * shifting everything after it.
+ */
+function appendByHeader_(sheet, values) {
+  const headers = sheet
+    .getRange(1, 1, 1, Math.max(1, sheet.getLastColumn()))
+    .getValues()[0]
+    .map(function (h) {
+      return String(h).trim();
+    });
+  const row = headers.map(function (h) {
+    return Object.prototype.hasOwnProperty.call(values, h) ? values[h] : "";
+  });
+  sheet.appendRow(row);
+}
+
 /** Rows as objects keyed by header text, so columns can be reordered freely. */
 function rowObjects_(sheet) {
   const values = sheet.getDataRange().getValues();
@@ -293,9 +329,20 @@ function setup() {
   const ss = SpreadsheetApp.getActive();
 
   ensureTab_(ss, TAB.responses, [
-    ["Timestamp", "Name", "Selections", "Skills", "OtherProblems", "SubmittedAt"],
+    [
+      "Timestamp",
+      "Name",
+      "Selections",
+      "OtherCauses",
+      "Skills",
+      "Networks",
+      "SubmittedAt",
+    ],
   ]);
 
+  // The per-mode 1/0 columns are named after the mode labels. If you rename a
+  // mode in the Modes tab, rename its column header here to match and the
+  // counts keep filling; the Modes text column is correct either way.
   ensureTab_(ss, TAB.flat, [
     [
       "Timestamp",
@@ -303,6 +350,7 @@ function setup() {
       "Pillar",
       "StatementId",
       "Statement",
+      "Modes",
       "Discuss",
       "Research",
       "Build",
@@ -340,7 +388,7 @@ function setup() {
     ["stepName", "Your name"],
     ["stepCauses", "Pick your causes"],
     ["stepInvolvement", "How you'd get involved"],
-    ["stepSkills", "Skills & what we missed"],
+    ["stepSkills", "Passions, skills & networks"],
     ["stepReview", "Review & send"],
     ["nameLabel", "Name"],
     ["namePlaceholder", "Your full name"],
@@ -348,10 +396,12 @@ function setup() {
     ["involvementPrompt", "For each cause you picked, choose every way you'd be willing to contribute. Pick more than one if that's true."],
     ["modesHint", "Discuss — panels & discussions · Research — issue briefs & research · Build — hands-on project work"],
     ["notesPlaceholder", "Optional — got a project idea that could address this gap? Any relevant experience in this problem space (work, volunteering, lived experience)? Share both here."],
-    ["skillsLabel", "Skills or networks you bring"],
-    ["skillsHelp", "Regardless of problem space — what skills or networks do you bring to the hub, and what would you want to contribute through them? e.g. research, design, engineering, fundraising, media, connections to specific communities or organisations."],
-    ["missedLabel", "Problems we missed"],
-    ["missedHelp", "What do you deeply care about that isn't on our list? Free-form — list as many as you like, and we'll consider adding them to the repository."],
+    ["otherCausesLabel", "Other causes you're passionate about"],
+    ["otherCausesHelp", "What do you deeply care about that isn't on our list — and why does it matter to you? Free-form; list as many as you like, and we'll consider adding them to the repository."],
+    ["skillsLabel", "Skills & past experience"],
+    ["skillsHelp", "What can you actually do, and what have you done before? e.g. research, design, engineering, policy, fundraising, comms — plus any work, volunteering or lived experience that's relevant."],
+    ["networksLabel", "Networks & resources"],
+    ["networksHelp", "Who or what can you open doors to? e.g. connections to specific communities, NGOs, government agencies, companies or funders — or access to space, tools, data or budget."],
     ["reviewNote", "Your response goes to the Global Shapers Singapore organising team."],
     ["submitLabel", "Send my response"],
     ["doneHeadline", "Thanks, {firstName}."],

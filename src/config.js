@@ -81,7 +81,7 @@ export const DEFAULT_CONFIG = {
     stepName: "Your name",
     stepCauses: "Pick your causes",
     stepInvolvement: "How you'd get involved",
-    stepSkills: "Skills & what we missed",
+    stepSkills: "Passions, skills & networks",
     stepReview: "Review & send",
     nameLabel: "Name",
     namePlaceholder: "Your full name",
@@ -92,12 +92,17 @@ export const DEFAULT_CONFIG = {
       "Discuss — panels & discussions · Research — issue briefs & research · Build — hands-on project work",
     notesPlaceholder:
       "Optional — got a project idea that could address this gap? Any relevant experience in this problem space (work, volunteering, lived experience)? Share both here.",
-    skillsLabel: "Skills or networks you bring",
+    // Step 4 asks three things, in this order. The order is deliberate:
+    // causes first, following on from the problem statements just picked.
+    otherCausesLabel: "Other causes you're passionate about",
+    otherCausesHelp:
+      "What do you deeply care about that isn't on our list — and why does it matter to you? Free-form; list as many as you like, and we'll consider adding them to the repository.",
+    skillsLabel: "Skills & past experience",
     skillsHelp:
-      "Regardless of problem space — what skills or networks do you bring to the hub, and what would you want to contribute through them? e.g. research, design, engineering, fundraising, media, connections to specific communities or organisations.",
-    missedLabel: "Problems we missed",
-    missedHelp:
-      "What do you deeply care about that isn't on our list? Free-form — list as many as you like, and we'll consider adding them to the repository.",
+      "What can you actually do, and what have you done before? e.g. research, design, engineering, policy, fundraising, comms — plus any work, volunteering or lived experience that's relevant.",
+    networksLabel: "Networks & resources",
+    networksHelp:
+      "Who or what can you open doors to? e.g. connections to specific communities, NGOs, government agencies, companies or funders — or access to space, tools, data or budget.",
     reviewNote: "Your response goes to the Global Shapers Singapore organising team.",
     submitLabel: "Send my response",
     doneHeadline: "Thanks, {firstName}.",
