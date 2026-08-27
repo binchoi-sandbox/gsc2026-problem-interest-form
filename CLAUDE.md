@@ -52,7 +52,17 @@ See [README.md](README.md) for the sheet schema and setup steps.
 - **Statement ids are load-bearing.** Responses store `id` alongside `title`,
   and analytics key off the id when present. Renaming a `Title` in the sheet is
   safe; reusing a `StatementId` for a different statement silently merges two
-  problems' data.
+  problems' data. Renumbering ids to tidy up a reordered sheet is the same
+  hazard wearing a friendly face — don't, once responses exist.
+- **Nothing keys off mode *labels*.** Analytics buckets come from the
+  configured modes, the ranking tiebreak and headline tile use the *last*
+  mode (shallow → deep ordering is the convention), and `Flat` carries a
+  plain-text `Modes` column that survives any rename. Renaming a mode is
+  safe; only the `Flat` per-mode 1/0 column headers need to match, and
+  `setup()` writes them from the live labels.
+- **Reads and writes both match on header text.** `appendByHeader_` means
+  sheet column order is free to change. The headers themselves are the
+  contract — a typo'd header silently drops that field.
 - **Two gates, two purposes.** `ADMIN_HASH` in the bundle only decides whether
   the organiser UI renders. The `ORGANISER_CODE` **script property** is the real
   check — the responses endpoint would otherwise be a public dump of names and
@@ -83,6 +93,3 @@ See [README.md](README.md) for the sheet schema and setup steps.
 - The organiser code is shared rather than per-user; rotating it means editing
   `Code.gs`, re-deploying, and updating `ADMIN_HASH`.
 - Analytics are computed client-side from raw rows; fine at club scale.
-- Mode labels `Discuss` / `Research` / `Build` are hardcoded in the analytics
-  aggregation and in the `Flat` sheet columns. Renaming them in the `Modes` tab
-  changes the form but orphans the counts.
