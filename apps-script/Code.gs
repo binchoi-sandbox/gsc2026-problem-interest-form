@@ -88,33 +88,46 @@ function doPost(e) {
     }
 
     const now = new Date();
+    const name = String(d.name).trim();
     const selections = Array.isArray(d.selections) ? d.selections : [];
 
-    sheet_(TAB.responses).appendRow([
-      now,
-      String(d.name).trim(),
-      JSON.stringify(selections),
-      d.skills || "",
-      d.otherProblems || "",
-      d.submittedAt || now.toISOString(),
-    ]);
+    appendByHeader_(sheet_(TAB.responses), {
+      Timestamp: now,
+      Name: name,
+      Selections: JSON.stringify(selections),
+      OtherCauses: d.otherCauses || "",
+      Skills: d.skills || "",
+      Networks: d.networks || "",
+      SubmittedAt: d.submittedAt || now.toISOString(),
+    });
 
     // Mirror into a flat, one-row-per-(person × statement) tab so the sheet
     // is directly pivotable. The JSON blob above stays the source of truth.
     const flat = sheet_(TAB.flat);
+    const modeLabels = readModes_().map(function (m) {
+      return m.label;
+    });
     selections.forEach(function (s) {
       const modes = Array.isArray(s.modes) ? s.modes : [];
-      flat.appendRow([
-        now,
-        String(d.name).trim(),
-        s.pillar || "",
-        s.id || "",
-        s.title || "",
-        modes.indexOf("Discuss") > -1 ? 1 : 0,
-        modes.indexOf("Research") > -1 ? 1 : 0,
-        modes.indexOf("Build") > -1 ? 1 : 0,
-        s.notes || "",
-      ]);
+      const row = {
+        Timestamp: now,
+        Name: name,
+        Pillar: s.pillar || "",
+        StatementId: s.id || "",
+        Statement: s.title || "",
+        // Plain-text mirror of the selections. Survives any mode rename,
+        // so the data is never lost even if the 1/0 columns below don't
+        // line up with the current mode labels.
+        Modes: modes.join(", "),
+        Notes: s.notes || "",
+      };
+      // One 1/0 column per configured mode, keyed by label. appendByHeader_
+      // drops keys with no matching header, so a renamed mode simply stops
+      // filling its old column instead of shifting every value after it.
+      modeLabels.forEach(function (label) {
+        row[label] = modes.indexOf(label) > -1 ? 1 : 0;
+      });
+      appendByHeader_(flat, row);
     });
 
     return json_({ ok: true });
@@ -139,8 +152,9 @@ function readResponses_() {
       return {
         name: String(r.Name),
         selections: safeParse_(r.Selections, []),
+        otherCauses: String(r.OtherCauses || ""),
         skills: String(r.Skills || ""),
-        otherProblems: String(r.OtherProblems || ""),
+        networks: String(r.Networks || ""),
         submittedAt: toIso_(r.SubmittedAt || r.Timestamp),
       };
     });
@@ -235,6 +249,28 @@ function sheet_(name) {
   return s;
 }
 
+/**
+ * Appends a row by matching object keys to the sheet's header text.
+ *
+ * Writes used to be positional while reads matched on header name, so
+ * inserting or reordering a column silently sent data to the wrong place.
+ * Both directions now agree on the header row as the single source of truth:
+ * reorder columns freely, and an unrecognised key is dropped rather than
+ * shifting everything after it.
+ */
+function appendByHeader_(sheet, values) {
+  const headers = sheet
+    .getRange(1, 1, 1, Math.max(1, sheet.getLastColumn()))
+    .getValues()[0]
+    .map(function (h) {
+      return String(h).trim();
+    });
+  const row = headers.map(function (h) {
+    return Object.prototype.hasOwnProperty.call(values, h) ? values[h] : "";
+  });
+  sheet.appendRow(row);
+}
+
 /** Rows as objects keyed by header text, so columns can be reordered freely. */
 function rowObjects_(sheet) {
   const values = sheet.getDataRange().getValues();
@@ -292,44 +328,56 @@ function toIso_(v) {
 function setup() {
   const ss = SpreadsheetApp.getActive();
 
-  ensureTab_(ss, TAB.responses, [
-    ["Timestamp", "Name", "Selections", "Skills", "OtherProblems", "SubmittedAt"],
-  ]);
+  // Config tabs first: Flat's per-mode columns are named after whatever the
+  // Modes tab actually contains, so that tab has to exist before we read it.
+  ensureConfigTabs_(ss);
 
-  ensureTab_(ss, TAB.flat, [
+  ensureTab_(ss, TAB.responses, [
     [
       "Timestamp",
       "Name",
-      "Pillar",
-      "StatementId",
-      "Statement",
-      "Discuss",
-      "Research",
-      "Build",
-      "Notes",
+      "Selections",
+      "OtherCauses",
+      "Skills",
+      "Networks",
+      "SubmittedAt",
     ],
   ]);
 
+  // One 1/0 column per configured mode, named after the current labels — so
+  // deleting this tab and re-running setup() after renaming a mode produces
+  // headers that match. The Modes text column is correct regardless.
+  const modeLabels = readModes_().map(function (m) {
+    return m.label;
+  });
+  ensureTab_(ss, TAB.flat, [
+    ["Timestamp", "Name", "Pillar", "StatementId", "Statement", "Modes"]
+      .concat(modeLabels)
+      .concat(["Notes"]),
+  ]);
+}
+
+function ensureConfigTabs_(ss) {
   ensureTab_(ss, TAB.statements, [
     ["PillarId", "Pillar", "Color", "StatementId", "Title", "Subtitle", "Order", "Active"],
     ["p1", "Equity & Inclusion", "#2F5AA8", "p1s1", "Social isolation & loneliness", "Young working adults", 10, true],
     ["p1", "Equity & Inclusion", "#2F5AA8", "p1s2", "PWDs post-18 cliffs", "Support drop-off after age 18", 20, true],
     ["p1", "Equity & Inclusion", "#2F5AA8", "p1s3", "End of life, palliative care & grief support", "", 30, true],
     ["p1", "Equity & Inclusion", "#2F5AA8", "p1s4", "Caregiving & sandwiched generation support", "", 40, true],
-    ["p2", "Education & Employment", "#1E7A6F", "p2s1", "Impact of AI on fresh grads", "", 50, true],
-    ["p2", "Education & Employment", "#1E7A6F", "p2s2", "Education arms race & anxiety", "", 60, true],
-    ["p2", "Education & Employment", "#1E7A6F", "p2s3", "Upskilling for retrenched mid-career workers", "", 70, true],
-    ["p2", "Education & Employment", "#1E7A6F", "p2s4", "Social mobility", "", 80, true],
-    ["p2", "Education & Employment", "#1E7A6F", "p2s5", "NEET youths", "Not in education, employment or training", 90, true],
+    ["p1", "Equity & Inclusion", "#2F5AA8", "p1s5", "Social mobility", "", 50, true],
+    ["p2", "Education & Employment", "#1E7A6F", "p2s1", "Impact of AI on fresh grads", "", 60, true],
+    ["p2", "Education & Employment", "#1E7A6F", "p2s2", "Education arms race & anxiety", "", 70, true],
+    ["p2", "Education & Employment", "#1E7A6F", "p2s3", "Upskilling for retrenched mid-career workers", "", 80, true],
+    ["p2", "Education & Employment", "#1E7A6F", "p2s4", "NEET youths", "Not in education, employment or training", 90, true],
     ["p3", "Climate & Environment", "#8A5A1E", "p3s1", "Waste & circularity", "", 100, true],
     ["p3", "Climate & Environment", "#8A5A1E", "p3s2", "Heat resilience & environmental justice", "", 110, true],
   ]);
 
   ensureTab_(ss, TAB.modes, [
     ["ModeId", "Label", "Description", "Order", "Active"],
-    ["discuss", "Discuss", "Join panels & discussions, share perspectives", 10, true],
-    ["research", "Research", "Help write issue briefs, do field research", 20, true],
-    ["build", "Build", "Work hands-on on a project tackling this", 30, true],
+    ["learn", "Learn", "Join a deep dive or panel discussion if GSC organises one", 10, true],
+    ["organise", "Organise", "Contribute your time and networks to hold a deep dive or panel discussion", 20, true],
+    ["build", "Build", "Potentially willing to start a project on this", 30, true],
   ]);
 
   ensureTab_(ss, TAB.copy, [
@@ -340,26 +388,28 @@ function setup() {
     ["stepName", "Your name"],
     ["stepCauses", "Pick your causes"],
     ["stepInvolvement", "How you'd get involved"],
-    ["stepSkills", "Skills & what we missed"],
+    ["stepSkills", "Passions, skills & networks"],
     ["stepReview", "Review & send"],
     ["nameLabel", "Name"],
     ["namePlaceholder", "Your full name"],
-    ["causesPrompt", "Select every problem you'd genuinely make time for. There's no limit."],
+    ["causesPrompt", "Select every problem you'd be keen to explore further. There's no limit."],
     ["involvementPrompt", "For each cause you picked, choose every way you'd be willing to contribute. Pick more than one if that's true."],
-    ["modesHint", "Discuss — panels & discussions · Research — issue briefs & research · Build — hands-on project work"],
+    ["modesHint", "Learn: join deep-dives and panel discussion if GSC organises | Organize: Contribute time and networks to hold deep-dives or panel discussions | Build: Potentially willing to start a project on this"],
     ["notesPlaceholder", "Optional — got a project idea that could address this gap? Any relevant experience in this problem space (work, volunteering, lived experience)? Share both here."],
-    ["skillsLabel", "Skills or networks you bring"],
-    ["skillsHelp", "Regardless of problem space — what skills or networks do you bring to the hub, and what would you want to contribute through them? e.g. research, design, engineering, fundraising, media, connections to specific communities or organisations."],
-    ["missedLabel", "Problems we missed"],
-    ["missedHelp", "What do you deeply care about that isn't on our list? Free-form — list as many as you like, and we'll consider adding them to the repository."],
+    ["otherCausesLabel", "Other causes you're passionate about"],
+    ["otherCausesHelp", "What do you deeply care about that isn't on our list — and why does it matter to you? Free-form; list as many as you like, and we'll consider adding them to the repository."],
+    ["skillsLabel", "Skills & past experience"],
+    ["skillsHelp", "What can you actually do, and what have you done before? e.g. research, design, engineering, policy, fundraising, comms — plus any work, volunteering or lived experience that's relevant."],
+    ["networksLabel", "Networks & resources"],
+    ["networksHelp", "Who or what can you open doors to? e.g. connections to specific communities, NGOs, government agencies, companies or funders — or access to space, tools, data or budget."],
     ["reviewNote", "Your response goes to the Global Shapers Singapore organising team."],
     ["submitLabel", "Send my response"],
     ["doneHeadline", "Thanks, {firstName}."],
-    ["doneBody", "Your interests are with the organising team. We'll reach out when we start forming groups around each problem statement."],
-    ["footer", "Global Shapers Singapore · Landscape research → action"],
+    ["doneBody", "Your interests are with the Curatorship and Impact Office. We'll reach out when we start forming groups around each problem statement."],
+    ["footer", "Global Shapers Singapore · Landscape research → Action"],
     ["errName", "Your name helps us follow up — please add it."],
     ["errCauses", "Pick at least one problem statement to continue."],
-    ["errModes", "Choose at least one way to get involved for each cause (Discuss / Research / Build)."],
+    ["errModes", "Choose at least one way to get involved for each cause (Learn / Organize / Build)."],
     ["errSend", "Couldn't save your response just now. Use “Copy my answers” and send them to the organisers directly."],
   ]);
 }

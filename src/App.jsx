@@ -36,8 +36,9 @@ export default function App() {
   const [selected, setSelected] = useState([]); // statement ids, in click order
   const [modes, setModes] = useState({}); // statement id -> [modeId]
   const [notes, setNotes] = useState({}); // statement id -> text
+  const [otherCauses, setOtherCauses] = useState("");
   const [skills, setSkills] = useState("");
-  const [otherProblems, setOtherProblems] = useState("");
+  const [networks, setNetworks] = useState("");
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
@@ -118,8 +119,9 @@ export default function App() {
       modes: (modes[id] || []).map(modeLabel),
       notes: (notes[id] || "").trim(),
     })),
+    otherCauses: otherCauses.trim(),
     skills: skills.trim(),
-    otherProblems: otherProblems.trim(),
+    networks: networks.trim(),
     submittedAt: new Date().toISOString(),
   });
 
@@ -147,8 +149,9 @@ export default function App() {
           }`
       ),
       "",
-      d.skills && `Skills & networks: ${d.skills}`,
-      d.otherProblems && `Problems we missed: ${d.otherProblems}`,
+      d.otherCauses && `Other causes: ${d.otherCauses}`,
+      d.skills && `Skills & past experience: ${d.skills}`,
+      d.networks && `Networks & resources: ${d.networks}`,
     ].filter(Boolean);
     try {
       await navigator.clipboard.writeText(lines.join("\n"));
@@ -314,45 +317,49 @@ export default function App() {
 
     const rows = Array.isArray(adminData) ? adminData : [];
 
+    // Mode buckets come from the configured modes, never from hardcoded
+    // names — renaming a mode in the sheet must not silently zero its counts.
+    // `byMode` also absorbs labels from older responses that no longer appear
+    // in the config, so historical answers stay visible after a rename.
+    const modeLabels = MODES.map((m) => m.label);
+    const freshStat = (title, color, pillar) => {
+      const s = { title, color, pillar, total: 0, byMode: {} };
+      for (const label of modeLabels) s.byMode[label] = 0;
+      return s;
+    };
+
     // Key analytics by statement id where present so a renamed statement
     // keeps its history; fall back to title for rows saved before ids.
     const stats = {};
-    for (const s of ALL)
-      stats[s.id] = {
-        title: s.title,
-        color: s.color,
-        pillar: s.pillar,
-        total: 0,
-        Discuss: 0,
-        Research: 0,
-        Build: 0,
-      };
+    for (const s of ALL) stats[s.id] = freshStat(s.title, s.color, s.pillar);
 
     const suggested = [];
     const skillNotes = [];
+    const networkNotes = [];
     for (const r of rows) {
       for (const sel of r.selections || []) {
         const key = sel.id && stats[sel.id] ? sel.id : sel.title;
-        if (!stats[key])
-          stats[key] = {
-            title: sel.title,
-            color: "#8892A6",
-            pillar: sel.pillar,
-            total: 0,
-            Discuss: 0,
-            Research: 0,
-            Build: 0,
-          };
+        if (!stats[key]) stats[key] = freshStat(sel.title, "#8892A6", sel.pillar);
         stats[key].total += 1;
-        for (const m of sel.modes || []) if (stats[key][m] !== undefined) stats[key][m] += 1;
+        for (const m of sel.modes || []) {
+          stats[key].byMode[m] = (stats[key].byMode[m] || 0) + 1;
+        }
       }
-      if ((r.otherProblems || "").trim())
-        suggested.push({ name: r.name, text: r.otherProblems.trim() });
+      if ((r.otherCauses || "").trim())
+        suggested.push({ name: r.name, text: r.otherCauses.trim() });
       if ((r.skills || "").trim()) skillNotes.push({ name: r.name, text: r.skills.trim() });
+      if ((r.networks || "").trim())
+        networkNotes.push({ name: r.name, text: r.networks.trim() });
     }
 
+    // Modes are ordered shallow → deep in the sheet, so the last one is the
+    // strongest signal of commitment. Used as the ranking tiebreak and the
+    // headline tile, without naming any mode in code.
+    const deepest = modeLabels[modeLabels.length - 1] || "";
+    const deep = (v) => v.byMode[deepest] || 0;
+
     const ranked = Object.entries(stats).sort(
-      (a, b) => b[1].total - a[1].total || b[1].Build - a[1].Build
+      (a, b) => b[1].total - a[1].total || deep(b[1]) - deep(a[1])
     );
     const maxTotal = Math.max(1, ...ranked.map(([, v]) => v.total));
 
@@ -426,10 +433,10 @@ export default function App() {
                   style={{ borderColor: "#DDE2EA" }}
                 >
                   <div className="gs-display text-3xl font-bold">
-                    {ranked.reduce((a, [, v]) => a + v.Build, 0)}
+                    {ranked.reduce((a, [, v]) => a + deep(v), 0)}
                   </div>
                   <div className="text-xs" style={{ color: "#8892A6" }}>
-                    Build commitments
+                    {deepest} commitments
                   </div>
                 </div>
                 <div
@@ -468,8 +475,18 @@ export default function App() {
                       />
                     </div>
                     <div className="text-xs" style={{ color: "#8892A6" }}>
-                      Discuss {v.Discuss} · Research {v.Research} ·{" "}
-                      <b style={{ color: INK }}>Build {v.Build}</b>
+                      {Object.keys(v.byMode).map((label, i) => (
+                        <React.Fragment key={label}>
+                          {i > 0 && " · "}
+                          {label === deepest ? (
+                            <b style={{ color: INK }}>
+                              {label} {v.byMode[label]}
+                            </b>
+                          ) : (
+                            `${label} ${v.byMode[label]}`
+                          )}
+                        </React.Fragment>
+                      ))}
                     </div>
                   </div>
                 ))}
@@ -477,7 +494,7 @@ export default function App() {
 
               {suggested.length > 0 && (
                 <div className="mb-6">
-                  <h2 className="gs-display font-bold mb-3">Problems members suggested</h2>
+                  <h2 className="gs-display font-bold mb-3">Other causes members raised</h2>
                   <div
                     className="bg-white rounded-xl border p-5"
                     style={{ borderColor: "#DDE2EA" }}
@@ -496,13 +513,33 @@ export default function App() {
               )}
 
               {skillNotes.length > 0 && (
-                <div>
-                  <h2 className="gs-display font-bold mb-3">Skills & networks in the room</h2>
+                <div className="mb-6">
+                  <h2 className="gs-display font-bold mb-3">Skills & experience in the room</h2>
                   <div
                     className="bg-white rounded-xl border p-5"
                     style={{ borderColor: "#DDE2EA" }}
                   >
                     {skillNotes.map((s, i) => (
+                      <div
+                        key={i}
+                        className="py-2 border-b last:border-b-0 text-sm"
+                        style={{ borderColor: "#EEF1F5" }}
+                      >
+                        <b>{s.name}:</b> {s.text}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {networkNotes.length > 0 && (
+                <div>
+                  <h2 className="gs-display font-bold mb-3">Networks & resources in the room</h2>
+                  <div
+                    className="bg-white rounded-xl border p-5"
+                    style={{ borderColor: "#DDE2EA" }}
+                  >
+                    {networkNotes.map((s, i) => (
                       <div
                         key={i}
                         className="py-2 border-b last:border-b-0 text-sm"
@@ -541,14 +578,19 @@ export default function App() {
                     )}
                   </div>
                 ))}
-                {r.skills && (
+                {r.otherCauses && (
                   <div className="text-sm mt-2">
-                    <b>Skills & networks:</b> {r.skills}
+                    <b>Other causes:</b> {r.otherCauses}
                   </div>
                 )}
-                {r.otherProblems && (
+                {r.skills && (
                   <div className="text-sm mt-1">
-                    <b>Problems we missed:</b> {r.otherProblems}
+                    <b>Skills & past experience:</b> {r.skills}
+                  </div>
+                )}
+                {r.networks && (
+                  <div className="text-sm mt-1">
+                    <b>Networks & resources:</b> {r.networks}
                   </div>
                 )}
               </div>
@@ -738,6 +780,20 @@ export default function App() {
         {step === 3 && (
           <div>
             <label className="block mb-6">
+              <span className="font-semibold">{copy.otherCausesLabel}</span>
+              <span className="block text-sm mb-1.5" style={{ color: "#8892A6" }}>
+                {copy.otherCausesHelp}
+              </span>
+              <textarea
+                value={otherCauses}
+                onChange={(e) => setOtherCauses(e.target.value)}
+                rows={4}
+                className="w-full rounded-lg border px-4 py-2.5 bg-white"
+                style={{ borderColor: "#C9CFDA" }}
+              />
+            </label>
+
+            <label className="block mb-6">
               <span className="font-semibold">{copy.skillsLabel}</span>
               <span className="block text-sm mb-1.5" style={{ color: "#8892A6" }}>
                 {copy.skillsHelp}
@@ -752,13 +808,13 @@ export default function App() {
             </label>
 
             <label className="block">
-              <span className="font-semibold">{copy.missedLabel}</span>
+              <span className="font-semibold">{copy.networksLabel}</span>
               <span className="block text-sm mb-1.5" style={{ color: "#8892A6" }}>
-                {copy.missedHelp}
+                {copy.networksHelp}
               </span>
               <textarea
-                value={otherProblems}
-                onChange={(e) => setOtherProblems(e.target.value)}
+                value={networks}
+                onChange={(e) => setNetworks(e.target.value)}
                 rows={4}
                 className="w-full rounded-lg border px-4 py-2.5 bg-white"
                 style={{ borderColor: "#C9CFDA" }}
@@ -791,14 +847,19 @@ export default function App() {
                 );
               })}
               <div className="pt-3 border-t text-sm" style={{ borderColor: "#EEF1F5" }}>
-                {skills.trim() && (
+                {otherCauses.trim() && (
                   <div>
-                    <b>Skills & networks:</b> {skills.trim()}
+                    <b>{copy.otherCausesLabel}:</b> {otherCauses.trim()}
                   </div>
                 )}
-                {otherProblems.trim() && (
+                {skills.trim() && (
                   <div>
-                    <b>Problems we missed:</b> {otherProblems.trim()}
+                    <b>{copy.skillsLabel}:</b> {skills.trim()}
+                  </div>
+                )}
+                {networks.trim() && (
+                  <div>
+                    <b>{copy.networksLabel}:</b> {networks.trim()}
                   </div>
                 )}
               </div>

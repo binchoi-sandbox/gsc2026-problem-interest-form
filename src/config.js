@@ -44,6 +44,7 @@ export const DEFAULT_CONFIG = {
         { id: "p1s2", title: "PWDs post-18 cliffs", sub: "Support drop-off after age 18" },
         { id: "p1s3", title: "End of life, palliative care & grief support", sub: "" },
         { id: "p1s4", title: "Caregiving & sandwiched generation support", sub: "" },
+        { id: "p1s5", title: "Social mobility", sub: "" },
       ],
     },
     {
@@ -54,8 +55,7 @@ export const DEFAULT_CONFIG = {
         { id: "p2s1", title: "Impact of AI on fresh grads", sub: "" },
         { id: "p2s2", title: "Education arms race & anxiety", sub: "" },
         { id: "p2s3", title: "Upskilling for retrenched mid-career workers", sub: "" },
-        { id: "p2s4", title: "Social mobility", sub: "" },
-        { id: "p2s5", title: "NEET youths", sub: "Not in education, employment or training" },
+        { id: "p2s4", title: "NEET youths", sub: "Not in education, employment or training" },
       ],
     },
     {
@@ -69,9 +69,21 @@ export const DEFAULT_CONFIG = {
     },
   ],
   modes: [
-    { id: "discuss", label: "Discuss", desc: "Join panels & discussions, share perspectives" },
-    { id: "research", label: "Research", desc: "Help write issue briefs, do field research" },
-    { id: "build", label: "Build", desc: "Work hands-on on a project tackling this" },
+    {
+      id: "learn",
+      label: "Learn",
+      desc: "Join a deep dive or panel discussion if GSC organises one",
+    },
+    {
+      id: "organise",
+      label: "Organise",
+      desc: "Contribute your time and networks to hold a deep dive or panel discussion",
+    },
+    {
+      id: "build",
+      label: "Build",
+      desc: "Potentially willing to start a project on this",
+    },
   ],
   copy: {
     eyebrow: "Global Shapers · Singapore Hub",
@@ -81,33 +93,37 @@ export const DEFAULT_CONFIG = {
     stepName: "Your name",
     stepCauses: "Pick your causes",
     stepInvolvement: "How you'd get involved",
-    stepSkills: "Skills & what we missed",
+    stepSkills: "Passions, skills & networks",
     stepReview: "Review & send",
     nameLabel: "Name",
     namePlaceholder: "Your full name",
-    causesPrompt: "Select every problem you'd genuinely make time for. There's no limit.",
+    causesPrompt:
+      "Select every problem you'd be keen to explore further. There's no limit.",
     involvementPrompt:
       "For each cause you picked, choose every way you'd be willing to contribute. Pick more than one if that's true.",
     modesHint:
-      "Discuss — panels & discussions · Research — issue briefs & research · Build — hands-on project work",
+      "Learn: join deep-dives and panel discussion if GSC organises | Organize: Contribute time and networks to hold deep-dives or panel discussions | Build: Potentially willing to start a project on this",
     notesPlaceholder:
       "Optional — got a project idea that could address this gap? Any relevant experience in this problem space (work, volunteering, lived experience)? Share both here.",
-    skillsLabel: "Skills or networks you bring",
+    otherCausesLabel: "Other causes you're passionate about",
+    otherCausesHelp:
+      "What do you deeply care about that isn't on our list — and why does it matter to you? Free-form; list as many as you like, and we'll consider adding them to the repository.",
+    skillsLabel: "Skills & past experience",
     skillsHelp:
-      "Regardless of problem space — what skills or networks do you bring to the hub, and what would you want to contribute through them? e.g. research, design, engineering, fundraising, media, connections to specific communities or organisations.",
-    missedLabel: "Problems we missed",
-    missedHelp:
-      "What do you deeply care about that isn't on our list? Free-form — list as many as you like, and we'll consider adding them to the repository.",
+      "What can you actually do, and what have you done before? e.g. research, design, engineering, policy, fundraising, comms — plus any work, volunteering or lived experience that's relevant.",
+    networksLabel: "Networks & resources",
+    networksHelp:
+      "Who or what can you open doors to? e.g. connections to specific communities, NGOs, government agencies, companies or funders — or access to space, tools, data or budget.",
     reviewNote: "Your response goes to the Global Shapers Singapore organising team.",
     submitLabel: "Send my response",
     doneHeadline: "Thanks, {firstName}.",
     doneBody:
-      "Your interests are with the organising team. We'll reach out when we start forming groups around each problem statement.",
-    footer: "Global Shapers Singapore · Landscape research → action",
+      "Your interests are with the Curatorship and Impact Office. We'll reach out when we start forming groups around each problem statement.",
+    footer: "Global Shapers Singapore · Landscape research → Action",
     errName: "Your name helps us follow up — please add it.",
     errCauses: "Pick at least one problem statement to continue.",
     errModes:
-      "Choose at least one way to get involved for each cause (Discuss / Research / Build).",
+      "Choose at least one way to get involved for each cause (Learn / Organize / Build).",
     errSend:
       "Couldn't save your response just now. Use “Copy my answers” and send them to the organisers directly.",
   },
