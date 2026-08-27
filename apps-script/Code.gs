@@ -328,6 +328,10 @@ function toIso_(v) {
 function setup() {
   const ss = SpreadsheetApp.getActive();
 
+  // Config tabs first: Flat's per-mode columns are named after whatever the
+  // Modes tab actually contains, so that tab has to exist before we read it.
+  ensureConfigTabs_(ss);
+
   ensureTab_(ss, TAB.responses, [
     [
       "Timestamp",
@@ -340,24 +344,20 @@ function setup() {
     ],
   ]);
 
-  // The per-mode 1/0 columns are named after the mode labels. If you rename a
-  // mode in the Modes tab, rename its column header here to match and the
-  // counts keep filling; the Modes text column is correct either way.
+  // One 1/0 column per configured mode, named after the current labels — so
+  // deleting this tab and re-running setup() after renaming a mode produces
+  // headers that match. The Modes text column is correct regardless.
+  const modeLabels = readModes_().map(function (m) {
+    return m.label;
+  });
   ensureTab_(ss, TAB.flat, [
-    [
-      "Timestamp",
-      "Name",
-      "Pillar",
-      "StatementId",
-      "Statement",
-      "Modes",
-      "Discuss",
-      "Research",
-      "Build",
-      "Notes",
-    ],
+    ["Timestamp", "Name", "Pillar", "StatementId", "Statement", "Modes"]
+      .concat(modeLabels)
+      .concat(["Notes"]),
   ]);
+}
 
+function ensureConfigTabs_(ss) {
   ensureTab_(ss, TAB.statements, [
     ["PillarId", "Pillar", "Color", "StatementId", "Title", "Subtitle", "Order", "Active"],
     ["p1", "Equity & Inclusion", "#2F5AA8", "p1s1", "Social isolation & loneliness", "Young working adults", 10, true],
