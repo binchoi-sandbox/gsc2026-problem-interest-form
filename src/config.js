@@ -12,8 +12,14 @@
 // and the defaults below on a cold device with no backend at all.
 
 // Apps Script /exec URL. Empty = artifact/offline mode (defaults only).
+//
+// This is the deployment id, not the spreadsheet. Creating a *new* deployment
+// mints a new id and leaves this pointing at the old one — which keeps
+// serving the code version it was pinned to, so the form silently talks to
+// stale logic. Prefer Manage deployments → edit → New version, which keeps
+// the id stable; if you do make a new deployment, update this line.
 export const SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbxazlKXiqY8CqmkcsCmXSYjsVaiSoREAsZZKYCG1DNb_gRO2PB1qbO29-dIX4LbvNp5hg/exec";
+  "https://script.google.com/macros/s/AKfycby8jLEISKOSD2A1AGO0sd_CjmfMLARrfxdfj5MEsKTyuJpa-fjOLzSwpc_Z776JBU-WiQ/exec";
 
 // SHA-256 of the organiser passcode. This gates the UI only — the real
 // check happens server-side against the ORGANISER_CODE script property.
